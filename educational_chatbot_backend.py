@@ -19,7 +19,7 @@ os.environ["LANGCHAIN_PROJECT"] = "EducationalChatbot"
 
 # Initialize the ChatGroq model
 def init_llm():
-    return ChatGroq(groq_api_key=groq_key, model_name="llama-3.1-70b-versatile")
+    return ChatGroq(groq_api_key=groq_key, model_name="mixtral-8x7b-32768")
 
 llm = init_llm()
 
@@ -76,6 +76,21 @@ industry_expert = Agent(
     verbose=False
 )
 
+# Add this new agent definition after the other agent definitions
+mental_health_counselor = Agent(
+    role='Mental Health Counselor',
+    goal='Provide concise support and guidance for students dealing with mental health issues',
+    backstory='''You are a compassionate mental health counselor for students. Your expertise includes:
+    1. Understanding common student mental health issues (stress, anxiety, depression).
+    2. Knowledge of coping strategies and therapeutic techniques.
+    3. Awareness of cultural factors influencing mental health in India.
+    4. Ability to provide empathetic listening and supportive counseling.
+    5. Knowledge of when to recommend professional help.
+    Provide brief, practical advice to improve students' mental well-being.''',
+    llm=llm,
+    verbose=False
+)
+
 # Define functions for each agent
 def get_career_counselor_advice(query):
     task = Task(
@@ -104,33 +119,40 @@ def get_industry_expert_advice(query):
     )
     return Crew(agents=[industry_expert], tasks=[task], verbose=False).kickoff()
 
+# Add this new function after the other agent functions
+def get_mental_health_counselor_advice(query):
+    task = Task(
+        description=f"Provide mental health support and guidance based on the query: {query}",
+        agent=mental_health_counselor,
+        student_info=student_info,
+        expected_output="Supportive counseling and mental health recommendations"
+    )
+    return Crew(agents=[mental_health_counselor], tasks=[task], verbose=False).kickoff()
+
 # Define prompt template
 template = """
-You are an AI career guidance assistant for school students in India. Your goal is to help students choose their career paths by providing personalized advice and information. You have access to three specialized agents:
+You are an AI career guidance assistant for school students in India. Your goal is to help students by providing concise, relevant advice and information. You have access to four specialized agents:
 
-1. Career Counselor: An experienced professional with in-depth knowledge of various career paths, educational requirements, and the Indian education system.
+1. Career Counselor: Provides career path guidance and educational requirements.
+2. Skill Analyst: Identifies and suggests key competencies for various professions.
+3. Industry Expert: Offers insights on job market trends and emerging careers.
+4. Mental Health Counselor: Provides support for mental health issues and promotes wellness.
 
-2. Skill Analyst: An expert in identifying and developing key competencies for various professions, with a focus on both technical and soft skills relevant to the Indian job market.
+Important guidelines:
+1. Keep responses brief and to the point.
+2. Avoid unnecessary elaboration or exaggeration.
+3. Provide specific, actionable advice when possible.
+4. If you don't have enough information, ask clarifying questions instead of making assumptions.
 
-3. Industry Expert: A seasoned professional with up-to-date knowledge of job market trends, emerging careers, and industry-specific insights in India.
+Based on the student's query and the selected agent, provide a concise and relevant response.
 
-Student Information:
-Name: {name}
-Age: {age}
-Class: {class}
-Stream: {stream}
+Student Info:
+{student_info}
 
-Please consider the following aspects in your responses:
-1. Tailor your advice based on the student's background, interests, and academic level.
-2. Provide information on various career paths, including traditional and emerging fields.
-3. Offer insights on educational requirements and skill development.
-4. Be supportive and encouraging, while also being realistic about challenges and requirements.
-5. Use the student's information to provide more personalized guidance.
+Student Query: {query}
 
-Current conversation:
-{chat_history}
-Human: {human_input}
-AI: """
+Your response:
+"""
 
 prompt = PromptTemplate(input_variables=["name", "age", "class", "stream", "chat_history", "human_input"], template=template)
 
@@ -158,8 +180,16 @@ def get_ai_response(prompt):
         query = prompt.replace("!industry_expert", "").strip()
         response = get_industry_expert_advice(query)
         return f"Industry Expert: {response}"
+    elif prompt.startswith("!mental_health_counselor"):
+        query = prompt.replace("!mental_health_counselor", "").strip()
+        response = get_mental_health_counselor_advice(query)
+        return f"Mental Health Counselor: {response}"
     else:
         return get_conversation_response(prompt)
+
+def get_conversation_response(prompt):
+    response = llm(template.format(student_info=student_info, query=prompt))
+    return response.strip()
 
 # Add this new function to set student info
 def set_student_info(info):
