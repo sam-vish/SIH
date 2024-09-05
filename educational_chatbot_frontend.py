@@ -45,6 +45,8 @@ elif st.session_state.page == "chat":
         change_agent("Skill Analyst")
     if st.sidebar.button("Industry Expert"):
         change_agent("Industry Expert")
+    if st.sidebar.button("Mental Health Counselor"):
+        change_agent("Mental Health Counselor")
 
     # Display current agent
     if st.session_state.selected_agent:
@@ -74,10 +76,14 @@ elif st.session_state.page == "chat":
                 st.markdown(response)
             st.session_state.messages.append({"role": "assistant", "content": response})
 
-    # Instructions
+    # Update the Instructions
     st.sidebar.title("How to use")
     st.sidebar.markdown("""
-    1. Select an agent from the sidebar.
-    2. Ask questions related to career guidance.
+    1. Select an agent from the sidebar:
+       - Career Counselor for career guidance
+       - Skill Analyst for skill assessment and development
+       - Industry Expert for job market trends
+       - Mental Health Counselor for emotional support and well-being
+    2. Ask questions related to your chosen topic.
     3. Change the agent at any time to get different perspectives.
     """)
